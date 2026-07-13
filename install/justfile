@@ -1,0 +1,161 @@
+# install/justfile — instalacion de programas y dotfiles.
+# Uso: `just install <receta>` (ej. `just install claude`, `just install rust`).
+
+set shell := ["bash", "-uc"]
+
+dots := justfile_directory()
+claude_dir := env_var("HOME") + "/.claude"
+nvim_dir := env_var("HOME") + "/.config/nvim"
+neovim_src := env_var_or_default("NEOVIM_SRC_DIR", env_var("HOME") + "/.local/src/neovim")
+swiftly_home := env_var_or_default("SWIFTLY_HOME_DIR", env_var("HOME") + "/.local/share/swiftly")
+swiftly_bin  := swiftly_home / "bin"
+
+# Lista las recetas de instalacion disponibles.
+default:
+    @just --list
+
+# --- Rust --------------------------------------------------------------
+
+# Instala rustup (toolchain manager oficial) y fija stable como default. Idempotente.
+rust:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v rustup >/dev/null 2>&1; then
+        echo "rustup ya instalado: $(rustup --version | head -n1)"
+    else
+        echo "Instalando rustup..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+        echo 'Anade a tu shell: source "$HOME/.cargo/env"'
+    fi
+    source "$HOME/.cargo/env"
+    rustup default stable
+    rustc --version
+    cargo --version
+
+# --- Neovim --------------------------------------------------------------
+
+# Compila Neovim desde source en su rama "stable" (release estable, no nightly).
+neovim:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=== dependencias de compilacion (dnf) ==="
+    sudo dnf -y install ninja-build cmake gcc gcc-c++ make unzip gettext curl glibc-gconv-extra
+
+    SRC="{{neovim_src}}"
+    if [ -d "$SRC/.git" ]; then
+        echo "=== actualizando repo neovim ==="
+        git -C "$SRC" fetch --tags origin
+    else
+        echo "=== clonando neovim ==="
+        mkdir -p "$(dirname "$SRC")"
+        git clone https://github.com/neovim/neovim "$SRC"
+    fi
+    git -C "$SRC" checkout stable
+    git -C "$SRC" pull --ff-only origin stable
+
+    echo "=== compilando (RelWithDebInfo, rama stable) ==="
+    make -C "$SRC" CMAKE_BUILD_TYPE=RelWithDebInfo -j"$(nproc)"
+
+    echo "=== instalando (requiere sudo) ==="
+    sudo make -C "$SRC" install
+    hash -r
+    nvim --version | head -n1
+
+# Instala (symlink) tu config de Neovim desde dotfiles/nvim hacia ~/.config/nvim.
+nvim-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DOTS="{{dots}}/nvim"
+    TARGET="{{nvim_dir}}"
+
+    if [ -L "$TARGET" ] && [ "$(readlink "$TARGET")" = "$DOTS" ]; then
+        echo "  ok  $TARGET"
+    else
+        if [ -e "$TARGET" ] || [ -L "$TARGET" ]; then
+            mv "$TARGET" "$TARGET.bak"
+            echo "  bak $TARGET.bak"
+        fi
+        ln -s "$DOTS" "$TARGET"
+        echo "  -> $TARGET"
+    fi
+    echo "Listo."
+
+# --- Swift -----------------------------------------------------------------
+
+# Instala swiftly (gestor oficial de toolchains, tipo rustup). Idempotente.
+swiftly:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -x "{{swiftly_bin}}/swiftly" ]; then
+        echo "swiftly ya instalado: $({{swiftly_bin}}/swiftly --version)"
+        exit 0
+    fi
+    echo "Descargando e instalando swiftly..."
+    curl -fsSL https://swiftlang.github.io/swiftly/swiftly-install.sh | bash -s -- -y
+    echo "Listo. Reinicia la shell o ejecuta: source {{swiftly_home}}/env.sh"
+
+# Instala el ultimo toolchain estable (full). Embedded ya viene incluido como
+# modo de compilacion; el SDK static/musl se agrega aparte con `musl-sdk`.
+swift: swiftly
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{swiftly_home}}/env.sh"
+    swiftly install latest --use
+    hash -r
+    swift --version
+
+# Agrega el Static Linux SDK (musl) para compilar binarios estaticos.
+# Uso posterior: swift build --swift-sdk x86_64-swift-linux-musl
+musl-sdk:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{swiftly_home}}/env.sh"
+    VERSION="$(swift --version | grep -oP 'Swift version \K[0-9.]+')"
+    echo "Instalando Static Linux SDK para Swift ${VERSION}..."
+    swift sdk install \
+      "https://download.swift.org/swift-${VERSION}-release/static-sdk/swift-${VERSION}-RELEASE/swift-${VERSION}-RELEASE_static-linux-0.0.1.artifactbundle.tar.gz"
+    swift sdk list
+
+# --- Claude Code -------------------------------------------------------
+
+# Instala (o reconcilia) la config de Claude desde dotfiles via symlinks.
+claude:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DOTS="{{dots}}/claude"
+    CLAUDE="{{claude_dir}}"
+
+    _link() {
+        local src="$1" dst="$2"
+        if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+            echo "  ok  $dst"
+            return
+        fi
+        [ -e "$dst" ] && mv "$dst" "$dst.bak" && echo "  bak $dst.bak"
+        ln -s "$src" "$dst"
+        echo "  -> $dst"
+    }
+
+    echo "=== settings y keybindings ==="
+    _link "$DOTS/settings.json"    "$CLAUDE/settings.json"
+    _link "$DOTS/keybindings.json" "$CLAUDE/keybindings.json"
+
+    echo "=== agents ==="
+    mkdir -p "$CLAUDE/agents"
+    for f in "$DOTS"/agents/*.md; do
+        _link "$f" "$CLAUDE/agents/$(basename "$f")"
+    done
+
+    echo "=== skills ==="
+    mkdir -p "$CLAUDE/skills"
+    for d in "$DOTS"/skills/*/; do
+        _link "$d" "$CLAUDE/skills/$(basename "$d")"
+    done
+
+    echo "=== commands ==="
+    mkdir -p "$CLAUDE/commands"
+    for f in "$DOTS"/commands/*.md; do
+        _link "$f" "$CLAUDE/commands/$(basename "$f")"
+    done
+
+    echo "Listo."
