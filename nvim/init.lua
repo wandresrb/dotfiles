@@ -124,6 +124,27 @@ do
   --  See `:help 'clipboard'`
   vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
 
+  -- Portapapeles del sistema vía OSC 52 (para sesiones SSH / terminal remota).
+  --  Esta máquina es una tty sin servidor gráfico (sin X11/Wayland), así que
+  --  xclip/xsel/wl-copy no sirven. OSC 52 hace que Neovim envíe el texto copiado
+  --  al portapapeles de TU terminal LOCAL a través de una secuencia de escape,
+  --  atravesando el SSH. Requiere un terminal que soporte OSC 52 (Ghostty sí).
+  --  Neovim 0.10+ ya lo autodetecta bajo $SSH_TTY, pero lo dejamos explícito.
+  --  See `:help clipboard-osc52`
+  if vim.env.SSH_TTY then
+    local osc52 = require 'vim.ui.clipboard.osc52'
+    -- Copiar SÍ va por OSC 52 (llega al portapapeles de tu terminal local).
+    -- Pegar NO consulta al terminal (eso requiere clipboard-read y puede colgar/
+    -- pedir confirmación en Ghostty); devuelve el registro interno de Neovim,
+    -- que es justo lo que hace Neovim en su fallback automático de OSC 52.
+    local function paste() return { vim.fn.split(vim.fn.getreg '', '\n'), vim.fn.getregtype '' } end
+    vim.g.clipboard = {
+      name = 'OSC 52',
+      copy = { ['+'] = osc52.copy '+', ['*'] = osc52.copy '*' },
+      paste = { ['+'] = paste, ['*'] = paste },
+    }
+  end
+
   -- Enable break indent
   vim.o.breakindent = true
 

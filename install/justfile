@@ -14,6 +14,65 @@ swiftly_bin  := swiftly_home / "bin"
 default:
     @just --list
 
+# --- Helpers ------------------------------------------------------------
+
+# Detecta el gestor de paquetes e instala los paquetes indicados.
+# Los nombres se pasan en estilo dnf/Fedora; se traducen los que difieren
+# en apt/pacman/zypper. Uso interno: `just _pkg ninja-build cmake gcc ...`.
+_pkg *packages:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Traduce un nombre de paquete (estilo dnf) al del gestor dado.
+    # Imprime vacio para omitir el paquete en ese gestor.
+    translate() {
+        local mgr="$1" p="$2"
+        case "$mgr" in
+            apt)
+                case "$p" in
+                    gcc-c++)           echo "g++" ;;
+                    glibc-gconv-extra) echo "" ;;
+                    *)                 echo "$p" ;;
+                esac ;;
+            pacman)
+                case "$p" in
+                    ninja-build)       echo "ninja" ;;
+                    gcc-c++)           echo "gcc" ;;
+                    glibc-gconv-extra) echo "" ;;
+                    *)                 echo "$p" ;;
+                esac ;;
+            zypper)
+                case "$p" in
+                    ninja-build)       echo "ninja" ;;
+                    glibc-gconv-extra) echo "" ;;
+                    *)                 echo "$p" ;;
+                esac ;;
+            *) echo "$p" ;;
+        esac
+    }
+
+    if command -v dnf >/dev/null 2>&1;        then MGR=dnf
+    elif command -v apt-get >/dev/null 2>&1;  then MGR=apt
+    elif command -v pacman >/dev/null 2>&1;   then MGR=pacman
+    elif command -v zypper >/dev/null 2>&1;   then MGR=zypper
+    else
+        echo "No se encontro un gestor de paquetes soportado (dnf/apt/pacman/zypper)." >&2
+        exit 1
+    fi
+
+    PKGS=()
+    for p in {{packages}}; do
+        t="$(translate "$MGR" "$p")"
+        [ -n "$t" ] && PKGS+=("$t")
+    done
+
+    echo "=== gestor: $MGR — instalando: ${PKGS[*]} ==="
+    case "$MGR" in
+        dnf)    sudo dnf -y install "${PKGS[@]}" ;;
+        apt)    sudo apt-get update && sudo apt-get -y install "${PKGS[@]}" ;;
+        pacman) sudo pacman -Sy --needed --noconfirm "${PKGS[@]}" ;;
+        zypper) sudo zypper -n install "${PKGS[@]}" ;;
+    esac
+
 # --- Rust --------------------------------------------------------------
 
 # Instala rustup (toolchain manager oficial) y fija stable como default. Idempotente.
@@ -38,8 +97,8 @@ rust:
 neovim:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "=== dependencias de compilacion (dnf) ==="
-    sudo dnf -y install ninja-build cmake gcc gcc-c++ make unzip gettext curl glibc-gconv-extra
+    echo "=== dependencias de compilacion ==="
+    just _pkg ninja-build cmake gcc gcc-c++ make unzip gettext curl glibc-gconv-extra
 
     SRC="{{neovim_src}}"
     if [ -d "$SRC/.git" ]; then
