@@ -1,31 +1,60 @@
-# justfile — dotfiles: Claude Code config + Neovim + entorno Rust/Swift para Linux (Fedora)
-# Uso: `just` lista las recetas; `just install` lista los programas instalables.
-# Requiere: just, curl.
+# justfile — dotfiles: entorno de desarrollo (macOS + Linux).
+# `just` (sin args) lista las recetas agrupadas por categoria.
+# Config por symlinks + toolchains + apps. Requiere: just, curl.
+#
+# Arranque tipico en macOS:
+#   just apps            # Homebrew + todas las apps del Brewfile
+#   just nvim-config     # symlink de Neovim
+#   just ghostty-config  # symlink de Ghostty
+#   just claude          # symlink de la config de Claude Code
 
 set shell := ["bash", "-uc"]
 
-mod install
+# --- Modulos por categoria ---------------------------------------------
+import 'just/_helpers.just'
+import 'just/langs.just'
+import 'just/ide.just'
+import 'just/cli-tools.just'
+import 'just/apps.just'
 
-# Directorios canonicos de swiftly
-swiftly_home := env_var_or_default("SWIFTLY_HOME_DIR", env_var("HOME") + "/.local/share/swiftly")
+# --- Rutas compartidas -------------------------------------------------
+dots         := justfile_directory()
+home         := env_var("HOME")
+claude_dir   := home / ".claude"
+nvim_dir     := home / ".config" / "nvim"
+ghostty_dir  := home / ".config" / "ghostty"
+neovim_src   := env_var_or_default("NEOVIM_SRC_DIR", home / ".local" / "src" / "neovim")
+swiftly_home := env_var_or_default("SWIFTLY_HOME_DIR", home / ".local" / "share" / "swiftly")
 swiftly_bin  := swiftly_home / "bin"
 
-# Directorios usados por las recetas de estado (dotfiles)
-dots       := justfile_directory()
-claude_dir := env_var("HOME") + "/.claude"
-nvim_dir   := env_var("HOME") + "/.config/nvim"
-
-# Receta por defecto: muestra la lista de recetas
+# Receta por defecto: lista agrupada de recetas.
 default:
     @just --list
 
-# --- Entorno -------------------------------------------------------------
+# --- Swift en la shell -------------------------------------------------
 
-# Imprime el snippet para activar Swift en tu shell (anadir a ~/.bashrc).
+# Imprime el snippet para activar Swift (swiftly) en tu shell.
+[group('shell')]
 env:
     @echo 'source "{{swiftly_home}}/env.sh"'
 
-# Anade el source de swiftly a ~/.bashrc si no esta presente.
+# macOS: anade el source de swiftly a ~/.zshrc si falta.
+[macos]
+[group('shell')]
+setup-shell:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    LINE='source "{{swiftly_home}}/env.sh"'
+    if grep -qF "$LINE" "$HOME/.zshrc" 2>/dev/null; then
+        echo "~/.zshrc ya tiene el source de swiftly."
+    else
+        echo "$LINE" >> "$HOME/.zshrc"
+        echo "Anadido a ~/.zshrc. Abre una shell nueva."
+    fi
+
+# Linux: anade el source de swiftly a ~/.bashrc si falta.
+[linux]
+[group('shell')]
 setup-shell:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -37,36 +66,10 @@ setup-shell:
         echo "Anadido a ~/.bashrc. Abre una shell nueva."
     fi
 
-# --- Estado de dotfiles ----------------------------------------------------
+# --- Estado ------------------------------------------------------------
 
-# Muestra el estado actual de los symlinks de Claude.
-claude-status:
-    #!/usr/bin/env bash
-    DOTS="{{dots}}/claude"
-    CLAUDE="{{claude_dir}}"
-    echo "=== settings.json ==="
-    ls -la "$CLAUDE/settings.json"
-    echo "=== keybindings.json ==="
-    ls -la "$CLAUDE/keybindings.json"
-    echo "=== agents (dotfiles) ==="
-    ls -la "$CLAUDE/agents/" | grep "$(basename "$DOTS")"
-    echo "=== skills (dotfiles) ==="
-    ls -la "$CLAUDE/skills/" | grep "$(basename "$DOTS")"
-    echo "=== commands ==="
-    ls -la "$CLAUDE/commands/"
-
-# Muestra el estado actual del symlink de la config de Neovim.
-nvim-status:
-    #!/usr/bin/env bash
-    DOTS="{{dots}}/nvim"
-    TARGET="{{nvim_dir}}"
-    echo "=== ~/.config/nvim ==="
-    ls -la "$TARGET" 2>/dev/null || echo "  no existe"
-    readlink -f "$TARGET" 2>/dev/null | grep -q "$DOTS" \
-        && echo "  -> apunta a dotfiles ($DOTS)" \
-        || echo "  -> NO apunta a dotfiles"
-
-# Muestra version y ubicacion del toolchain de Swift activo.
+# Version y ubicacion del toolchain de Swift activo.
+[group('status')]
 info:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -74,3 +77,12 @@ info:
     swift --version
     echo "swift: $(which swift)"
     swiftly list
+
+# Estado de los symlinks de config (nvim, ghostty, claude).
+[group('status')]
+status:
+    #!/usr/bin/env bash
+    for t in "{{nvim_dir}}" "{{ghostty_dir}}" "{{claude_dir}}/settings.json"; do
+        echo "=== $t ==="
+        ls -la "$t" 2>/dev/null || echo "  no existe"
+    done
