@@ -96,6 +96,10 @@
       "rev": "74b06c6c75e4eeb3108ec01852001636d85a932b",
       "src": "https://github.com/nvim-lua/plenary.nvim"
     },
+    "rose-pine": {
+      "rev": "ff483051a47e27d84bdef47703538df1ed9f4a47",
+      "src": "https://github.com/rose-pine/neovim"
+    },
     "rustaceanvim": {
       "rev": "6d3b5788fd7c9a6745f3d92ae1b2da6bfeab0ad1",
       "src": "https://github.com/mrcjkb/rustaceanvim"

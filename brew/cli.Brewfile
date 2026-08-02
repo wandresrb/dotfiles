@@ -10,3 +10,4 @@ brew "fzf"        # fuzzy finder
 brew "bat"        # cat con colores
 brew "eza"        # ls moderno
 brew "zoxide"     # cd inteligente
+brew "tree-sitter-cli"     # code color highlight
