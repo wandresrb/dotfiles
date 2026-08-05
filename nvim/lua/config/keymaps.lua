@@ -1,76 +1,31 @@
--- ============================================================
--- SECTION 2: KEYMAPS
--- basic keymaps
--- ============================================================
-
--- [[ Basic Keymaps ]]
---  See `:help vim.keymap.set()`
-
--- Clear highlights on search when pressing <Esc> in normal mode
---  See `:help hlsearch`
-vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
-
-
-local map  = vim.keymap.set
-
-
--- Mover líneas seleccionadas en modo Visual
-map("v", "J", ":m '>+1<cr>gv=gv", { desc = "Bajar selección" })
-map("v", "K", ":m '<-2<cr>gv=gv", { desc = "Subir selección" })
-
-map("x", "<leader>p", [["_dP]], { desc = "Pegar sin sobrescribir registro" })
--- Diagnostic Config & Keymaps
---  See `:help vim.diagnostic.Opts`
-vim.diagnostic.config {
-  update_in_insert = false,
-  severity_sort = true,
-  float = { border = 'rounded', source = 'if_many' },
-  underline = { severity = { min = vim.diagnostic.severity.WARN } },
-
-  -- Can switch between these as you prefer
-  virtual_text = true, -- Text shows up at the end of the line
-  virtual_lines = false, -- Text shows up underneath the line, with virtual lines
-
-  -- Auto open the float, so you can easily read the errors when jumping with `[d` and `]d`
-  jump = {
-    on_jump = function(_, bufnr)
-      vim.diagnostic.open_float {
-        bufnr = bufnr,
-        scope = 'cursor',
-        focus = false,
-      }
-    end,
-  },
-}
-
-vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
-
--- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
--- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
--- is not what someone will guess without a bit more experience.
+-- Keymaps que NO dependen de ningún plugin.
 --
--- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
--- or just use <C-\><C-n> to exit terminal mode
-vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+-- Los de plugins viven con su plugin: telescope en plugins/telescope.lua,
+-- conform en plugins/format.lua, trouble/flash/lazygit/ccc en sus specs de
+-- plugins/lazy/, y los de diagnósticos en config/diagnostics.lua.
 
--- TIP: Disable arrow keys in normal mode
--- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
--- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
--- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
--- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+local map = vim.keymap.set
 
--- Keybinds to make split navigation easier.
---  Use CTRL+<hjkl> to switch between windows
---
---  See `:help wincmd` for a list of all window commands
-vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
-vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
-vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
-vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+map('i', 'jk', '<Esc>', { desc = 'Salir a Normal' })
+map('n', '<Esc>', '<cmd>nohlsearch<cr>', { desc = 'Quitar resaltado' })
+map('n', '<leader>w', '<cmd>w<cr>', { desc = 'Guardar archivo' })
+map('n', '<leader>q', '<cmd>q<cr>', { desc = 'Cerrar ventana' })
 
--- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
--- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
--- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
--- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
--- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
+map('n', '<C-h>', '<C-w>h', { desc = 'Ventana izquierda' })
+map('n', '<C-j>', '<C-w>j', { desc = 'Ventana abajo' })
+map('n', '<C-k>', '<C-w>k', { desc = 'Ventana arriba' })
+map('n', '<C-l>', '<C-w>l', { desc = 'Ventana derecha' })
 
+map('v', 'J', ":m '>+1<cr>gv=gv", { desc = 'Bajar selección' })
+map('v', 'K', ":m '<-2<cr>gv=gv", { desc = 'Subir selección' })
+
+-- Mantener el cursor centrado al desplazar y al saltar entre coincidencias.
+map('n', '<C-d>', '<C-d>zz')
+map('n', '<C-u>', '<C-u>zz')
+map('n', 'n', 'nzzzv')
+map('n', 'N', 'Nzzzv')
+
+map('x', '<leader>p', [["_dP]], { desc = 'Pegar sin sobrescribir el registro' })
+
+-- Salir del modo terminal sin el incómodo <C-\><C-n>.
+map('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Salir del modo terminal' })

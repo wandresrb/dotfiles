@@ -1,105 +1,63 @@
--- ============================================================
--- section 1: options
--- core neovim settings, leaders, options, basic keymaps, basic autocmds
--- ============================================================
-do
-  -- enable faster startup by caching compiled lua modules
-  vim.loader.enable()
+local opt = vim.opt
 
-  vim.g.mapleader = ' '
-  vim.g.maplocalleader = ' '
+-- Ponlo a true solo si tienes una Nerd Font instalada Y seleccionada en la
+-- terminal. Debe definirse ANTES de cargar plugins: mini.icons, mini.statusline
+-- y which-key lo consultan al hacer su setup, y si es nil se configuran sin
+-- iconos (oil se queda sin ellos porque depende del mock de mini.icons).
+vim.g.have_nerd_font = true
 
-  -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = true
+-- Números de línea (híbrido: relativo + absoluto en la actual)
+opt.number = true
+opt.relativenumber = true
 
-  -- [[ Setting options ]]
-  --  See `:help vim.o`
-  -- NOTE: You can change these options as you wish!
-  --  For more options, you can see `:help option-list`
+-- Indentación
+opt.tabstop = 2          -- ancho visual de un tab
+opt.shiftwidth = 2       -- ancho de una indentación
+opt.expandtab = true     -- tabs -> espacios
+opt.smartindent = true   -- indentación inteligente
 
-  -- Make line numbers default
-  vim.o.number = true
-  -- You can also add relative line numbers, to help with jumping.
-  --  Experiment for yourself to see if you like it!
-  vim.o.relativenumber = true
+-- Búsqueda
+opt.ignorecase = true    -- ignora mayúsculas...
+opt.smartcase = true     -- ...salvo que escribas alguna
+opt.hlsearch = false     -- no resaltar tras buscar
+opt.incsearch = true     -- resaltar mientras escribes
 
-  -- Enable mouse mode, can be useful for resizing splits for example!
-  vim.o.mouse = 'a'
+-- Interfaz
+opt.termguicolors = true -- colores de 24 bits (imprescindible para temas)
+opt.signcolumn = "yes"   -- columna de signos siempre visible (evita saltos)
+opt.cursorline = true    -- resalta la línea actual
+opt.scrolloff = 8        -- deja 8 líneas de margen al hacer scroll
+opt.wrap = false         -- no partir líneas largas
 
-  -- Don't show the mode, since it's already in the status line
-  vim.o.showmode = false
+-- Plegado
+--
+-- OBLIGATORIO si se usa `foldmethod = expr`, que es lo que activa el autocmd de
+-- treesitter (plugins/treesitter.lua). El default de Vim es foldlevel 0, o sea
+-- TODO PLEGADO: abres un archivo de 500 líneas y ves 5. Con 99 entras con todo
+-- desplegado y pliegas tú con `za`.
+opt.foldlevelstart = 99
 
-  -- Sync clipboard between OS and Neovim.
-  --  Schedule the setting after `UiEnter` because it can increase startup-time.
-  --  Remove this option if you want your OS clipboard to remain independent.
-  --  See `:help 'clipboard'`
-  vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
+-- Splits (donde aparecen las ventanas nuevas)
+opt.splitright = true
+opt.splitbelow = true
 
-  -- Enable break indent
-  vim.o.breakindent = true
+-- Archivos y undo
+opt.swapfile = false
+opt.undofile = true      -- historial de deshacer persistente entre sesiones
 
-  -- Indentación por defecto: usar espacios en lugar de tabs, 2 espacios de ancho.
-  --  NOTE: guess-indent.nvim ajustará esto por-archivo si detecta otra convención,
-  --  así que esto define solo el valor por defecto para archivos nuevos/ambiguos.
-  vim.o.expandtab = true -- Convierte <Tab> en espacios
-  vim.o.shiftwidth = 2 -- Ancho de una indentación (>>, <<, autoindent)
-  vim.o.tabstop = 2 -- Cuántos espacios "vale" visualmente un <Tab>
-  vim.o.softtabstop = 2 -- Cuántos espacios inserta/borra <Tab>/<BS> en modo insert
+-- Portapapeles del sistema
+opt.clipboard = "unnamedplus"
 
-  -- Folding (colapsar/expandir bloques). El foldexpr/foldmethod por treesitter se
-  -- activa por-buffer en SECTION 9. Aquí solo evitamos que todo abra colapsado:
-  --  foldlevelstart = 99 → al abrir un archivo, todos los folds empiezan ABIERTOS.
-  vim.o.foldlevelstart = 99
+-- Experiencia
+opt.updatetime = 250     -- respuesta más ágil (diagnósticos, etc.)
+opt.timeoutlen = 400     -- ventana para secuencias de teclas
+opt.mouse = "a"          -- el ratón, por si acaso (opcional)-- ============================================================
 
-  -- Enable undo/redo changes even after closing and reopening a file
-  vim.o.undofile = true
-
-  -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
-  vim.o.ignorecase = true
-  vim.o.smartcase = true
-
-  -- Keep signcolumn on by default
-  vim.o.signcolumn = 'yes'
-
-  -- Decrease update time
-  vim.o.updatetime = 250
-
-  -- Decrease mapped sequence wait time
-  vim.o.timeoutlen = 300
-
-  -- Configure how new splits should be opened
-  vim.o.splitright = true
-  vim.o.splitbelow = true
-
-  -- Sets how neovim will display certain whitespace characters in the editor.
-  --  See `:help 'list'`
-  --  and `:help 'listchars'`
-  --
-  --  Notice listchars is set using `vim.opt` instead of `vim.o`.
-  --  It is very similar to `vim.o` but offers an interface for conveniently interacting with tables.
-  --   See `:help lua-options`
-  --   and `:help lua-guide-options`
-  vim.o.list = true
-  vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
-
-  -- Preview substitutions live, as you type!
-  vim.o.inccommand = 'split'
-
-  -- Show which line your cursor is on
-  vim.o.cursorline = true
-
-  -- Minimal number of screen lines to keep above and below the cursor.
-  vim.o.scrolloff = 10
-
-  -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
-  -- instead raise a dialog asking if you wish to save the current file(s)
-  -- See `:help 'confirm'`
-  vim.o.confirm = true
-
-
-  -- my custom not kickstart
-
-  vim.opt.termguicolors = true
-  vim.opt.swapfile = false
-end
-
+---- vim.opt.autocomplete = true
+--
+-- vim.opt.completeopt = 'menu,menuone,noselect,popup'
+-- vim.opt.autocompletedelay = 250
+-- vim.opt.pumheight = 17
+-- vim.opt.pumborder = 'rounded'
+--
+-- vim.opt.complete:append('o')

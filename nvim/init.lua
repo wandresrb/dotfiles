@@ -1,31 +1,18 @@
-require('config.options')
-require('config.keymaps')
-require('config.autocmd')
-require('plugins.init')
+vim.g.mapleader = ' '
+vim.g.maplocalleader = ' '
 
--- ============================================================
--- SECTION 10: OPTIONAL EXAMPLES / NEXT STEPS
--- kickstart.plugins.* examples
--- ============================================================
-  -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
-  -- init.lua. If you want these files, they are in the repository, so you can just download them and
-  -- place them in the correct locations.
+require 'config.options'
+require 'config.keymaps'
+require 'config.diagnostics'
+require 'config.autocmd'
 
-  -- NOTE: Next step on your Neovim journey: Add/Configure additional plugins for Kickstart
-  --
-  --  Here are some example plugins that I've included in the Kickstart repository.
-  --  Uncomment any of the lines below to enable them (you will need to restart nvim).
-  --
-  -- require 'kickstart.plugins.debug'
-  -- require 'kickstart.plugins.indent_line'
-  -- require 'kickstart.plugins.lint'
-  -- require 'kickstart.plugins.autopairs'
-  -- require 'kickstart.plugins.neo-tree'
-  -- require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
+-- Nueva UI de mensajes/cmdline de nvim 0.12 (aún API privada).
+require('vim._core.ui2').enable()
 
-  -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
-  --
-  --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
+-- Los dos gestores. `config.lazy` va después: se monta sobre un
+-- packpath/runtimepath ya poblado por vim.pack.
+require 'config.pack' -- vim.pack   -> lua/plugins/pack/
+require 'config.lazy' -- lazy.nvim  -> lua/plugins/lazy/
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
